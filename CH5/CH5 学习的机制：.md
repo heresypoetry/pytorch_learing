@@ -203,11 +203,9 @@ plt.savefig("temp_unknown_plot.png", format="png")
 
 PyTorch 张量可以记住它们自己从何而来，根据产生它们的操作和父张量，它们可以根据输人自动提供这些操作的导数链。这意味着我们不需要手动推导模型，给定一个前向表达式，无论嵌套方式如何，PyTorch 都会自动提供表达式相对其输人参数的梯度。
 
-
-
 所有的张量都有一个grad属性，默认情况下，该属性对应的值是None. 如果在构造张量的时候，设置构造函数的requires_grad-True参数，这个参数告诉PyTorch跟踪由对params张量进行操作后产生的张量的整个系谱树。任何将params作为祖先的张量都可以访问params到那个张量调用的函数链。
 
-
+![][https://github.com/heresypoetry/pytorch_learing/blob/main/CH5/ch5_1.png]
 
 
 
@@ -223,3 +221,9 @@ if params.grad is not None:
 ```
 
 这一步是必要的。
+
+接下来是本节例子的完整算法：
+
+```
+```
+
