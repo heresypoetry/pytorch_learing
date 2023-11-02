@@ -201,13 +201,9 @@ plt.savefig("temp_unknown_plot.png", format="png")
 
 - Pytorch 自动求导：
 
-PyTorch 张量可以记住它们自己从何而来，根据产生它们的操作和父张量，它们可以根据输人自动提供这些操作的导数链。这意味着我们不需要手动推导模型，给定一个前向表达式，无论嵌套方式如何，PyTorch 都会自动提供表达式相对其输人参数的梯度。
+PyTorch 张量可以记住它们自己从何而来，根据产生它们的操作和父张量，它们可以根据输人自动提供这些操作的导数链。这意味着我们不需要手动推导模型，给定一个前向表达式，无论嵌套方式如何，PyTorch 都会自动提供表达式相对其输人参数的梯度。所有的张量都有一个grad属性，默认情况下，该属性对应的值是None. 如果在构造张量的时候，设置构造函数的requires_grad-True参数，这个参数告诉PyTorch跟踪由对params张量进行操作后产生的张量的整个系谱树。任何将params作为祖先的张量都可以访问params到那个张量调用的函数链。
 
-所有的张量都有一个grad属性，默认情况下，该属性对应的值是None. 如果在构造张量的时候，设置构造函数的requires_grad-True参数，这个参数告诉PyTorch跟踪由对params张量进行操作后产生的张量的整个系谱树。任何将params作为祖先的张量都可以访问params到那个张量调用的函数链。
-
-![][https://github.com/heresypoetry/pytorch_learing/blob/main/CH5/ch5_1.png]
-
-
+图见教材 p109
 
 我们可以有任意数量的 requires-grad 为 True 的张量和任意组合的函数。在这种情况下， PyTorch 将计算整个函数链（计算图）中损失的导数，并将它们的值累加到这些张量的 grad属性中（图的叶节点)。
 
@@ -224,6 +220,79 @@ if params.grad is not None:
 
 接下来是本节例子的完整算法：
 
-```
+```Python
+import torch
+import numpy as np
+tc = [0.5, 14.0, 15.0, 28.0, 11.0, 8.0, 3.0, -4.0, 6.0, 13.0, 21.0] 
+tu = [35.7, 55.9, 58.2, 81.9, 56.3, 48.9, 33.9, 21.8,48.4, 60.4, 68.4]
+def model(tu,w,b): 
+    return w * tu+b
+# 定义了一个模型
+tc = torch.tensor(tc)
+tu = torch.tensor(tu)
+tu_n = 0.1*tu
+#别忘了转化为张量
+def loss(tp,tc):
+    squared_diffs = (tp-tc)**2
+    return squared_diffs.mean()
+params = torch.tensor([1.0,0.0],requires_grad = True)
+def training_loop(n_epochs,learning_rate,params,tu,tc):
+    for epoch in range(1,n_epochs+1):
+        if params.grad is not None:
+            params.grad.zero_()
+        tp = model(tu,*params)
+        Loss = loss(model(tu,*params),tc)
+        Loss.backward() 
+        with torch.no_grad():
+            params -= learning_rate*params.grad
+        if epoch % 200 == 0:
+            print('epoch %d:%f' %(epoch,float(Loss)))
+    return params
+training_loop(5000,1e-2,params,tu_n,tc)
 ```
 
+---
+
+- 优化器：
+- 通过使用优化器，可以让我们的代码更加简单。
+
+torch模块有一个字模块，叫optim。里面包含了实现不同优化算法的类。
+
+每个优化器构造函数接受一个张量（其中requires_grad设置为True）作为第一个输入，传递给优化器的所有参数都保留在优化器对象中，这样优化器可以更新并访问他们的值。优化器可以减少很多的代码量。比如之前我们写的梯度下降的方法，可以使用叫SGD（随机梯度下降，随机的意思是这个算法只利用所有输入样本的一个随机子集得到的，而我们的算法利用的是所有子集）
+
+```Python
+import torch
+import numpy as np
+import torch.optim as optim
+tc = [0.5, 14.0, 15.0, 28.0, 11.0, 8.0, 3.0, -4.0, 6.0, 13.0, 21.0] 
+tu = [35.7, 55.9, 58.2, 81.9, 56.3, 48.9, 33.9, 21.8,48.4, 60.4, 68.4]
+def model(tu,w,b): 
+    return w * tu+b
+# 定义了一个模型
+tc = torch.tensor(tc)
+tu = torch.tensor(tu)
+tu_n = 0.1*tu
+#别忘了转化为张量
+def loss(tp,tc):
+    squared_diffs = (tp-tc)**2
+    return squared_diffs.mean()
+params = torch.tensor([1.0,0.0],requires_grad = True)
+learning_rate = 1e-2
+optimizer = optim.SGD( [params], learning_rate )
+def training_loop(n_epochs,optimizer,params,tu,tc):
+    for epoch in range(1,n_epochs+1):
+        tp = model(tu,*params)
+        Loss = loss(tp,tc)
+        optimizer.zero_grad()#这个方法替换了前面手动判断再清零。
+        Loss.backward() 
+        optimizer.step()# 上面这个语句就完成了对params的一次优化，修改了优化器的值。
+        if epoch % 200 == 0:
+            print('epoch %d:%f' %(epoch,float(Loss)))
+    return params
+training_loop(5000,optimizer,params,tu_n,tc)
+print(params)
+```
+
+- 分割训练集：
+
+randperm()函数可以把一个张量的元素打乱。容后从打乱的元素中挑一些作为训练集，一些作为测试集。
